@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hikari-lab"
-version = "0.6.8"
+version = "0.8.0"
 description = "HIKARI/.LAB — cyberpunk Git/GitHub workflow automation console"
 requires-python = ">=3.10"
 

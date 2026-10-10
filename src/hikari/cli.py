@@ -1205,31 +1205,67 @@ def confirm(prompt: str) -> bool:
     return input(f"  {prompt} {color('[y/N]', DIM)} ").strip().lower() in {"y", "yes"}
 
 
-COMMANDS = {"status", "scan", "pull", "push", "sync", "force-sync", "release", "release-manager", "undo-redo", "action-status"}
-
+COMMANDS = {"status", "scan", "pull", "push", "sync", "force-sync", "release", "release-manager", "undo-redo", "action-status", "doctor", "completion", "init", "watch", "notes", "time", "diff", "conflict", "repos", "pr", "issue", "actions", "plugins"}
 
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="hikari", description="HIKARI/.LAB cyberpunk Git/GitHub workflow console.")
+    p.add_argument("--version", action="version", version=f"hikari {get_version()} (python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro})")
     p.add_argument("--path", type=Path, default=Path.cwd(), help="Project path (default: current directory)")
     sub = p.add_subparsers(dest="command")
-    sub.add_parser("status")
-    sub.add_parser("action-status", help="show live repository state and recent HIKARI actions")
-    sub.add_parser("scan")
-    sub.add_parser("pull")
-    sub.add_parser("push")
-    for name in ("sync", "force-sync"):
+    for name in ("status", "scan", "pull", "push", "action-status"):
         cmd = sub.add_parser(name)
-        cmd.add_argument("--yes", action="store_true", help="Skip confirmation")
+        if name == "status": cmd.add_argument("--json", action="store_true", help="Print machine-readable JSON")
+    for name in ("sync", "force-sync"):
+        cmd = sub.add_parser(name); cmd.add_argument("--yes", action="store_true", help="Skip confirmation")
     sub.add_parser("release-manager", help="view and manage GitHub Releases and Git tags")
     sub.add_parser("undo-redo", help="safely undo commits, redo a revert, or restore unstaged file edits")
     rel = sub.add_parser("release")
-    rel.add_argument("kind", nargs="?", choices=("patch", "minor", "major"), default="patch")
-    rel.add_argument("--version", help="Explicit version, e.g. v1.2.3")
+    rel.add_argument("kind", nargs="?", choices=("patch", "minor", "major", "notes"), default="patch")
+    rel.add_argument("--version", dest="version", help="Explicit version, e.g. v1.2.3")
+    rel.add_argument("--from", dest="from_ref", help="Starting tag/ref for release notes")
+    rel.add_argument("--to", dest="to_ref", default="HEAD", help="Ending tag/ref for release notes")
+    rel.add_argument("--from-last-tag", action="store_true", help="Use the latest tag as the starting ref")
+    rel.add_argument("--template", choices=("keepachangelog", "simple", "github"), default="keepachangelog")
+    rel.add_argument("--write", action="store_true", help="Append generated notes to docs/CHANGELOG.md")
     rel.add_argument("--current", action="store_true", help="Release the version already declared by the project")
     rel.add_argument("--custom", action="store_true", help="Prompt for a custom target version")
     rel.add_argument("--yes", action="store_true", help="Skip confirmation")
+    doctor = sub.add_parser("doctor", help="check local environment prerequisites"); doctor.add_argument("target", nargs="?", type=Path)
+    comp = sub.add_parser("completion", help="print shell completion script"); comp.add_argument("shell", choices=("bash", "zsh", "fish"))
+    init = sub.add_parser("init", help="scaffold a new project"); init.add_argument("name", type=Path); init.add_argument("--template", choices=("python-cli", "python-lib", "empty"), default="python-cli"); init.add_argument("--git", action="store_true")
+    watch = sub.add_parser("watch", help="live-refresh status dashboard"); watch.add_argument("--interval", type=int, default=2)
+    notes = sub.add_parser("notes", help="per-project quick notes"); notes.add_argument("action", choices=("add", "list", "show", "edit", "clear")); notes.add_argument("text", nargs="*")
+    timer = sub.add_parser("time", help="per-project time tracking"); timer.add_argument("action", choices=("start", "stop", "status", "report")); timer.add_argument("--week", action="store_true"); timer.add_argument("--month", action="store_true")
+    diff = sub.add_parser("diff", help="show Git diff"); diff.add_argument("file", nargs="?"); diff.add_argument("--staged", action="store_true"); diff.add_argument("--cached", action="store_true"); diff.add_argument("--stat", action="store_true")
+    sub.add_parser("conflict", help="interactive merge conflict resolver")
+    repos = sub.add_parser("repos", help="manage multiple repositories"); repos.add_argument("action", choices=("add", "list", "status", "sync-all", "remove", "doctor")); repos.add_argument("target", nargs="?")
+    for group in ("pr", "issue", "actions"):
+        cmd=sub.add_parser(group, help=f"GitHub {group} management"); cmd.add_argument("action", choices=("list", "view", "create", "merge", "close", "logs")); cmd.add_argument("number", nargs="?"); cmd.add_argument("--title"); cmd.add_argument("--base", default="main"); cmd.add_argument("--squash", action="store_true")
+    plugins=sub.add_parser("plugins", help="list locally installed HIKARI plugins"); plugins.add_argument("action", choices=("list", "info", "reload"), nargs="?", default="list"); plugins.add_argument("name", nargs="?")
     return p
 
+def _status_json(repo: GitRepo | LocalProject, path: Path) -> dict:
+    version, _ = repo.local_version()
+    result = {"project": repo.name, "path": str(path), "version": version or get_version(), "branch": "", "remote": "", "working_tree": "UNKNOWN", "changes": {"modified": 0, "added": 0, "deleted": 0, "untracked": 0}, "sync": "no upstream", "last_commit": {"hash": "", "subject": ""}, "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")}
+    if isinstance(repo, GitRepo):
+        result["branch"] = repo.branch(); result["remote"] = repo.remote()
+        lines = repo.status_porcelain().splitlines(); counts = result["changes"]
+        for line in lines:
+            if line.startswith("??"): counts["untracked"] += 1
+            else:
+                code = line[:2]
+                if "A" in code: counts["added"] += 1
+                elif "D" in code: counts["deleted"] += 1
+                elif "M" in code or "R" in code or "C" in code: counts["modified"] += 1
+        result["working_tree"] = "DIRTY" if lines else "CLEAN"
+        upstream = repo.run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)
+        if upstream:
+            counts_sync = repo.run("rev-list", "--left-right", "--count", f"HEAD...{upstream}", check=False).split()
+            result["sync"] = f"{counts_sync[0]} ahead, {counts_sync[1]} behind" if len(counts_sync)==2 else upstream
+        last = repo.run("log", "-1", "--format=%h %s", check=False).split(" ", 1)
+        if last and last[0]: result["last_commit"] = {"hash": last[0], "subject": last[1] if len(last)>1 else ""}
+    else: result["working_tree"] = "LOCAL"
+    return result
 
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -1238,44 +1274,115 @@ def main(argv: list[str] | None = None) -> None:
     args = parser().parse_args(argv)
     try:
         path = args.path.expanduser().resolve()
-        try:
-            repo: GitRepo | LocalProject = GitRepo(path)
+        if args.command == "doctor":
+            from .commands.doctor import run
+            raise SystemExit(run(args.target or path))
+        if args.command == "completion":
+            from .commands.completion import render
+            print(render(args.shell), end=""); return
+        if args.command == "init":
+            from .commands.init import create_project
+            print(f"Created project: {create_project(args.name, args.template, args.git)}"); print("Next: cd into the project and start building."); return
+        try: repo: GitRepo | LocalProject = GitRepo(path)
         except GitError as exc:
-            if not str(exc).startswith("not a Git repository"):
-                raise
+            if not str(exc).startswith("not a Git repository"): raise
             repo = LocalProject(path)
-            if args.command in {"pull", "push", "sync", "force-sync", "release", "release-manager", "undo-redo"}:
+            if args.command in {"pull", "push", "sync", "force-sync", "release", "release-manager", "undo-redo", "diff", "conflict", "pr", "issue", "actions"}:
                 raise GitError("this project is not a Git repository; initialize Git first")
-        if not args.command:
-            run_wizard(repo)
-            return
-        if args.command == "status":
-            print(repo.status_text())
-        elif args.command == "action-status":
-            action_status(repo)
-        elif args.command == "scan":
-            print(repo.scan_text())
-        elif args.command == "pull":
-            repo.pull(); success("Changes pulled from remote.")
-        elif args.command == "push":
-            push_interactive(repo)
-        elif args.command == "sync":
-            sync(repo, args.yes)
-        elif args.command == "force-sync":
-            force_sync(repo, args.yes)
-        elif args.command == "release-manager":
-            release_manager(repo)
-        elif args.command == "undo-redo":
-            undo_redo_manager(repo)
+        if not args.command: run_wizard(repo); return
+        if args.command == "status": print(json.dumps(_status_json(repo, path), indent=2) if args.json else repo.status_text())
+        elif args.command == "action-status": action_status(repo)
+        elif args.command == "scan": print(repo.scan_text())
+        elif args.command == "pull": repo.pull(); success("Changes pulled from remote.")
+        elif args.command == "push": push_interactive(repo)
+        elif args.command == "sync": sync(repo, args.yes)
+        elif args.command == "force-sync": force_sync(repo, args.yes)
+        elif args.command == "release-manager": release_manager(repo)
+        elif args.command == "undo-redo": undo_redo_manager(repo)
         elif args.command == "release":
+            if args.kind == "notes":
+                from .commands.release_notes import generate
+                notes = generate(path, None if args.from_last_tag else args.from_ref, args.to_ref, args.template)
+                if args.write:
+                    changelog = path / "docs" / "CHANGELOG.md"; changelog.parent.mkdir(parents=True, exist_ok=True)
+                    with changelog.open("a", encoding="utf-8") as handle: handle.write("\n\n" + notes + "\n")
+                    print(f"Release notes appended to {changelog}")
+                else: print(notes)
+                return
             version = args.version
             if version is None and not args.current and not args.custom:
-                local_current, _ = repo.local_version()
-                version = next_version(local_current or "v0.0.0", args.kind)
+                local_current, _ = repo.local_version(); version = next_version(local_current or "v0.0.0", args.kind)
             release_interactive(repo, version=version, yes=args.yes, current=args.current, custom=args.custom)
-    except (GitError, ValueError) as exc:
-        error(str(exc))
-        raise SystemExit(1)
+        elif args.command == "watch":
+            from .commands.watch import watch
+            watch(lambda: repo.status_text(), args.interval)
+        elif args.command == "notes":
+            from .commands import notes as n
+            if args.action == "add":
+                if not args.text: raise ValueError("Usage: hikari notes add <text>")
+                print(f"Note added: {n.add(path, ' '.join(args.text))}")
+            elif args.action == "list": print(n.list_notes(path), end="" if n.list_notes(path).endswith("\n") else "\n")
+            elif args.action in {"edit", "show"}: n.edit(path)
+            elif args.action == "clear":
+                if confirm("Delete all notes for this project?"): print("Notes cleared." if n.clear(path) else "No notes to clear.")
+                else: print("Cancelled.")
+        elif args.command == "time":
+            from .commands import time as t
+            if args.action == "start": print("Timer started: " + t.start(path))
+            elif args.action == "stop": print("Session recorded: " + t.format_duration(t.stop(path)))
+            elif args.action == "status":
+                state=t.status(path); print(("Active since " + state["active"] + "; " if state["active"] else "No active session; ") + f"Total: {t.format_duration(state['duration_seconds'])} across {state['sessions']} sessions")
+            else:
+                period="week" if args.week else "month" if args.month else "all"; data=t.report(path, period=period); print(f"{period.title()} total: {t.format_duration(data['duration_seconds'])} across {data['sessions']} sessions")
+        elif args.command == "diff":
+            from .commands.diff import get_diff
+            output=get_diff(path,args.file,args.staged or args.cached,args.stat); print(output,end="")
+        elif args.command == "conflict":
+            from .commands.conflict import conflicted_files,apply_choice
+            files=conflicted_files(path)
+            if not files: print("✓ Tidak ada konflik")
+            else:
+                resolved=0
+                for i,file in enumerate(files,1):
+                    print(f"File {i}/{len(files)}: {file}\n  [1] Keep local (ours)\n  [2] Keep remote (theirs)\n  [3] Open in editor\n  [4] Mark as resolved\n  [0] Skip")
+                    choice=input("❯ ").strip()
+                    if choice in {"1","2","3","4"} and apply_choice(path,file,choice): resolved+=1
+                print(f"Resolved {resolved}/{len(files)} files")
+        elif args.command == "repos":
+            from .commands import repos as r
+            if args.action == "add":
+                if not args.target: raise ValueError("Usage: hikari repos add <path>")
+                print("Repository added." if r.add(args.target) else "Repository already registered.")
+            elif args.action == "remove":
+                if not args.target: raise ValueError("Usage: hikari repos remove <path>")
+                if confirm(f"Remove {args.target} from registry?"): print("Removed." if r.remove(args.target) else "Not registered.")
+            elif args.action == "list":
+                for item in r.load()["repos"]: print(item["path"])
+            elif args.action in {"status", "doctor"}:
+                for item in r.load()["repos"]:
+                    print(f"{item['path']}: {'directory exists' if Path(item['path']).is_dir() else 'MISSING'}")
+            elif args.action == "sync-all": print("Bulk sync is intentionally not automated yet; run sync per repository after reviewing each project.")
+        elif args.command in {"pr", "issue", "actions"}:
+            from .commands.github import gh
+            maps={"pr":{"list":["pr","list"],"view":["pr","view",args.number or ""],"create":["pr","create"],"merge":["pr","merge",args.number or ""],"close":["pr","close",args.number or ""]},"issue":{"list":["issue","list"],"view":["issue","view",args.number or ""],"create":["issue","create"],"close":["issue","close",args.number or ""]},"actions":{"list":["run","list"],"view":["run","view",args.number or ""],"logs":["run","view",args.number or "","--log"]}}
+            cmd=maps[args.command][args.action]
+            if args.title: cmd += ["--title",args.title]
+            if args.action == "merge" and args.squash: cmd.append("--squash")
+            print(gh(cmd,path,confirm=args.action in {"merge","close"}))
+        elif args.command == "plugins":
+            import os
+            from pathlib import Path as _Path
+            folder = _Path(os.environ.get("HIKARI_HOME", _Path.home() / ".hikari")) / "plugins"
+            files = sorted(folder.glob("*.py")) if folder.is_dir() else []
+            if args.action == "info":
+                match = next((f for f in files if f.stem == args.name), None)
+                print(f"Plugin file: {match}" if match else f"Plugin not found: {args.name or '(name required)'}")
+            elif not files: print(f"No local plugins found in {folder}")
+            else:
+                for item in files: print(f"{item.stem}  —  {item}")
+            if os.environ.get("HIKARI_NO_PLUGINS") == "1": print("Plugin loading disabled by HIKARI_NO_PLUGINS=1")
+    except (GitError, ValueError, RuntimeError, OSError) as exc:
+        error(str(exc)); raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -161,3 +161,6 @@ Detail lengkap → [docs/TUTORIAL.md](docs/TUTORIAL.md) · [docs/SECURITY.md](do
 光 · MIT License
 
 </div>
+## Roadmap commands (0.8.0)
+
+New diagnostics and productivity commands include `hikari --version`, `hikari doctor`, `hikari completion bash|zsh|fish`, `hikari init`, `hikari PATH status --json`, `hikari PATH watch`, `hikari PATH notes`, and `hikari PATH time`. Additional Git/GitHub helpers include `diff`, `conflict`, `repos`, and `pr`/`issue`/`actions` wrappers around the `gh` CLI. See [docs/ROADMAP-COMMANDS.md](docs/ROADMAP-COMMANDS.md) for syntax, storage locations, and safety notes.
