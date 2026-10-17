@@ -1,9 +1,9 @@
 {
   "project": "hikari-lab",
   "display_name": "HIKARI/.LAB",
-  "version": "0.6.8",
-  "status": "12-operation dashboard; outcome-accurate action history and editable persistent release-note drafts",
-  "milestone": "Hybrid dashboard and full operations",
+  "version": "0.8.1",
+  "status": "12-operation dashboard; roadmap commands; safe first-release flow for projects without version metadata",
+  "milestone": "Versionless first release",
   "runtime": "Python 3.10+",
   "canonical_test": "python3 -m unittest discover -s tests -v",
   "source_of_truth": [
@@ -20,5 +20,5 @@
     "chat_is_ephemeral": true,
     "artifact_is_continuous": true
   },
-  "state": "v0.6.8 interactive release-note preview/edit/load/save with per-project/per-version drafts stored outside target repository"
+  "state": "v0.8.1 first release support: projects without detected version can create v0.1.0 or custom SemVer tag without metadata mutation"
 }

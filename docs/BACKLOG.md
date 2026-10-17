@@ -1,3 +1,10 @@
+## 0.8.1 — First release without project version metadata
+- [x] Offer first-release `v0.1.0` when no project version is detected.
+- [x] Allow a custom first-release SemVer without creating metadata files.
+- [x] Make `release --yes` choose `v0.1.0` for versionless projects.
+- [x] Keep clean-tree, duplicate-tag, release-notes, and publication guards.
+- [x] Add regression tests for interactive and CLI first-release paths.
+
 ## 0.6.8 — Editable release notes drafts
 - [x] Preview generated release notes before the release confirmation.
 - [x] Edit multiline Markdown notes in the interactive release flow.

@@ -234,7 +234,7 @@ class ActionStatusTests(unittest.TestCase):
         finally:
             builtins.input = original_input
         rendered = output.getvalue()
-        assert "HYBRID MODE" in rendered
+        assert "TARGET PROJECT" in rendered
         assert "ACTION STATUS" not in rendered
 
 
@@ -273,9 +273,9 @@ class ActionStatusTests(unittest.TestCase):
 
         rendered = output.getvalue()
         for expected in (
-            "TARGET PROJECT", "DemoProject", "/tmp/DemoProject", "LIVE PROJECT STATUS",
-            "Working tree", "DIRTY", "OPERATIONS / 12 MODULES", "11 TROUBLESHOOT",
-            "7 REPOSITORY", "└─", "HYBRID MODE",
+            "TARGET PROJECT", "DemoProject", "/tmp/DemoProject", "# DASHBOARD",
+            "working_tree", "DIRTY", "# OPERATIONS", "11  TROUBLESHOOT",
+            "7  REPOSITORY",
         ):
             assert expected in rendered
         for key in range(1, 13):

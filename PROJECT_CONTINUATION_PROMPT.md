@@ -59,9 +59,14 @@ Latest UI fix (0.5.6): automatically clear stale terminal output before dashboar
 The authoritative main dashboard now has 12 entries: 1 STATUS, 2 SCAN, 3 PULL, 4 PUSH, 5 SYNC (submenu: guided sync / FORCE SYNC), 6 RELEASE (submenu: create release / manage releases and tags), 7 REPOSITORY (submenu: initialize local Git / GitHub repo configuration), 8 .GITIGNORE, 9 MANAGE (submenu: UNDO/REDO / HISTORY/LOG), 10 GIT GUIDE, 11 TROUBLESHOOT, 12 MISCELLANEOUS. Older menu-number references elsewhere in this continuity file describe prior snapshots; use this mapping for the current implementation. High-risk operations retain explicit confirmation with default N.
 
 
-## Current artifact state — 0.6.8
+## Historical artifact state — 0.6.8
 
 Action history records SUCCESS/FAILED/CANCELLED/BLOCKED with operation-specific results; utility success/warning/error feedback participates in the same bounded tracker. Keep result details concise and never persist command output or credentials.
 
 
 Release notes in interactive mode support preview/edit/load/save; drafts are per project/version and stored outside the target repository. Preserve the non-interactive `--yes` behavior and all existing release safety guards.
+
+
+## Current artifact state — 0.8.1
+
+RELEASE supports first-release tags for projects without version metadata: interactive default `v0.1.0` or custom SemVer; `--yes` uses `v0.1.0`. Preserve no-target-file-mutation behavior and existing safety guards.

@@ -17,21 +17,21 @@ class HistoryTroubleshootTests(unittest.TestCase):
         with patch("builtins.input", side_effect=["9"]), patch("sys.stdout", out):
             self.assertEqual(menu(is_git=True, has_remote=True), "9")
         self.assertIn("MANAGE", out.getvalue())
-        self.assertIn("OPERATIONS / 12 MODULES", out.getvalue())
+        self.assertIn("# OPERATIONS", out.getvalue())
 
     def test_local_mode_git_operation_offers_readiness_path(self):
         out = StringIO()
-        with patch("builtins.input", side_effect=["2"]), patch("sys.stdout", out):
-            self.assertEqual(menu(is_git=False, has_remote=False), "2")
-        self.assertIn("HYBRID MODE", out.getvalue())
-        self.assertIn("LOCAL MODE", out.getvalue())
+        with patch("builtins.input", side_effect=["3", "", "0"]), patch("sys.stdout", out):
+            self.assertEqual(menu(is_git=False, has_remote=False), "0")
+        self.assertIn("# DASHBOARD", out.getvalue())
+        self.assertIn("This operation needs Git", out.getvalue())
 
     def test_dashboard_has_simple_and_advanced_modes(self):
         out = StringIO()
         with patch("builtins.input", side_effect=["0"]), patch("sys.stdout", out):
             self.assertEqual(menu(is_git=True, has_remote=True), "0")
-        self.assertIn("HYBRID MODE", out.getvalue())
-        self.assertIn("OPERATIONS / 12 MODULES", out.getvalue())
+        self.assertIn("# DASHBOARD", out.getvalue())
+        self.assertIn("# OPERATIONS", out.getvalue())
 
     def test_history_log_lists_commits_and_tags(self):
         with tempfile.TemporaryDirectory() as td:

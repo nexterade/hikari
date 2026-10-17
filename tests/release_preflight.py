@@ -14,7 +14,7 @@ REQUIRED = {
     "PROJECT_CONTINUATION_PROMPT.md", "PROJECT_STATE.json", "docs/CHECKPOINT.md",
     "docs/STATE.md", "docs/BACKLOG.md", "docs/CHANGELOG.md", "docs/ARCHITECTURE.md",
     "docs/TUTORIAL.md", "docs/RELEASE-MANIFEST.md", "docs/SECURITY.md",
-    "docs/Creation-Chronicle.html", "docs/Glosarium.html", "docs/PLAN-v0.6.8.md",
+    "docs/Creation-Chronicle.html", "docs/Glosarium.html", "docs/PLAN-v0.8.1.md",
     "src/hikari/action_tracking.py", "tests", "src",
 }
 
@@ -56,7 +56,7 @@ def main():
         state = zf.read("docs/STATE.md").decode("utf-8")
         project_state = json.loads(zf.read("PROJECT_STATE.json").decode("utf-8"))
         pyproject_match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', pyproject, re.MULTILINE)
-        readme_match = re.search(r'^\*\*Version `([^`]+)`\*\*', readme, re.MULTILINE)
+        readme_match = re.search(r'version-([0-9]+\.[0-9]+\.[0-9]+)-[0-9A-Fa-f]+', readme) or re.search(r'^\*\*Version `([^`]+)`\*\*', readme, re.MULTILINE)
         state_match = re.search(r'^- Version: `([^`]+)`$', state, re.MULTILINE)
         if not pyproject_match or pyproject_match.group(1) != version:
             fail("VERSION and pyproject.toml version disagree")

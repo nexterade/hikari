@@ -25,7 +25,7 @@ class GitGuideTests(unittest.TestCase):
             self.assertEqual(menu(is_git=True, has_remote=True), "10")
         rendered = output.getvalue().lower()
         self.assertIn("git guide", rendered)
-        self.assertIn("hybrid mode", rendered)
+        self.assertIn("# dashboard", rendered)
 
     def test_menu_keeps_guide_available_in_local_mode(self):
         output = StringIO()

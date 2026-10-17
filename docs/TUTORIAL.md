@@ -118,7 +118,7 @@ The generated recommendation is based on the target project's detected stack. `I
 hikari /path/to/project release patch
 ```
 
-The interactive menu offers **Quick Release** (suggest next SemVer), **Force Release Current** (use the version already declared by project metadata), and **Custom Version**. CLI examples:
+The interactive menu offers **Quick Release** (suggest next SemVer), **Force Release Current** (use the version already declared by project metadata), and **Custom Version**. If no project version is detected, HIKARI offers a first release at `v0.1.0` or a custom SemVer instead of stopping. `--yes` uses `v0.1.0` for a versionless project. HIKARI only tags the current clean commit; it does not add or bump version files in the target project. CLI examples:
 
 ```bash
 hikari /path/to/project release patch

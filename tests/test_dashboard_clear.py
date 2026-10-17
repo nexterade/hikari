@@ -22,9 +22,9 @@ class DashboardClearTests(unittest.TestCase):
             self.assertEqual(ui.menu(is_git=True, has_remote=True), "0")
         rendered = "\\n".join(output)
         self.assertGreaterEqual(rendered.count("H I K A R I"), 1)
-        self.assertIn("OPERATIONS / 12 MODULES", rendered)
-        self.assertIn("6 RELEASE", rendered)
-        self.assertIn("9 MANAGE", rendered)
+        self.assertIn("# OPERATIONS", rendered)
+        self.assertIn("6  RELEASE", rendered)
+        self.assertIn("9  MANAGE", rendered)
         self.assertIn("0  EXIT HIKARI", rendered)
 
 
@@ -43,7 +43,7 @@ class DashboardClearTests(unittest.TestCase):
         with patch("builtins.input", side_effect=lambda _prompt="": next(choices)), patch.object(ui, "clear_screen"), patch("builtins.print", side_effect=lambda *a, **k: output.append(" ".join(map(str, a)))):
             self.assertEqual(ui.menu(is_git=True, has_remote=True, snapshot=snapshot), "0")
         rendered = "\\n".join(output)
-        for expected in ("LIVE PROJECT STATUS", "Working tree", "DIRTY", "1 ahead / 2 behind", "Review local changes before committing", "OPERATIONS / 12 MODULES"):
+        for expected in ("# DASHBOARD", "working_tree", "DIRTY", "1 ahead / 2 behind", "Review local changes before committing", "# OPERATIONS"):
             self.assertIn(expected, rendered)
 
     def test_dashboard_has_12_contiguous_operations_and_groups_are_nested(self):
@@ -52,8 +52,8 @@ class DashboardClearTests(unittest.TestCase):
         with patch("builtins.input", side_effect=lambda _prompt="": next(choices)), patch.object(ui, "clear_screen"), patch("builtins.print", side_effect=lambda *a, **k: output.append(" ".join(map(str, a)))):
             self.assertEqual(ui.menu(is_git=True, has_remote=True), "0")
         rendered = "\n".join(output)
-        self.assertIn("11 TROUBLESHOOT", rendered)
-        self.assertIn("12 MISC", rendered)
+        self.assertIn("11  TROUBLESHOOT", rendered)
+        self.assertIn("12  MISC", rendered)
 
     def test_advanced_menu_preserves_operation_ids(self):
         choices = iter(["10"])
@@ -87,6 +87,6 @@ if __name__ == "__main__":
             self.assertEqual(ui.menu(is_git=True, has_remote=True, snapshot=snapshot, target_context=context), "0")
         rendered = "\\n".join(output)
         self.assertIn("HIKARI /.LAB // LOCAL WORKSPACE", rendered)
-        self.assertIn("OPERATIONS / 12 MODULES", rendered)
+        self.assertIn("# OPERATIONS", rendered)
         self.assertIn("Choose operation [0–12]", rendered)
         self.assertIn("nested/", rendered)

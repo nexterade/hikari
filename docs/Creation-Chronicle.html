@@ -23,4 +23,4 @@
 <h2>Version 0.6.2 — Repository Profile Generator</h2>
 <p>Menu 11 GITHUB REPO now offers an opt-in deterministic generator for GitHub About and Topics when creating a new repository. It derives suggestions from local project metadata and README, previews them before creation, permits editing the About text, and uses separate default-N confirmations for generation and remote creation. About is passed to GitHub CLI during creation; Topics are applied afterward. No external AI service is used and project files are not pushed. Authenticated live GitHub behavior remains an environment-dependent validation gate.</p>
 </section>
-</body></html>
+<section><h2>2026-10-17 — Version 0.8.1: First release without version metadata</h2><p>Release creation now supports clean Git projects that have no detectable version metadata. Interactive mode offers a first tag at <code>v0.1.0</code> or a custom SemVer, and <code>release --yes</code> selects <code>v0.1.0</code>. HIKARI tags the current source commit without writing version files into the target project. Regression tests protect clean-tree and duplicate-tag guards.</p></section></body></html>

@@ -1,4 +1,13 @@
-## Unreleased — Solana-inspired terminal theme
+# Changelog
+
+## 0.8.1 — First release for versionless projects
+- Allow RELEASE to proceed when the target project has no detected version metadata.
+- Offer `v0.1.0` as the first-release default and support a custom SemVer.
+- Make non-interactive `release --yes` choose `v0.1.0` for versionless projects rather than deriving the accidental `v0.0.1`.
+- Preserve clean-working-tree, duplicate-tag, release-note, and remote publication guards; no target version files are written.
+- Add regression tests for default/custom first releases and CLI version routing.
+
+## 0.8.0 — Productivity commands and shared theme
 
 - Added `hikari.theme` as the shared terminal palette and ANSI utility module based on the supplied `theme.py`.
 - Routed the existing CLI color aliases through Ocean Blue, Surge Green, Purple Dino, and grayscale tokens for consistent styling across dashboard, menus, prompts, status messages, and utilities.

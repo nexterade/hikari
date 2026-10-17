@@ -1,20 +1,20 @@
-# 0.6.8 — Editable Release Notes Drafts
+# 0.8.1 — First Release Without Version Metadata
 
-- Interactive RELEASE supports previewing, editing, loading, and saving multiline Markdown notes for a target version.
-- Drafts are stored per resolved project and version under HIKARI home (or `HIKARI_HOME`), outside the target repository.
-- Draft editing/saving does not commit, tag, push, or publish; the existing release confirmation and clean-working-tree/duplicate-tag guards remain in force.
-- `--yes` retains the generated-notes path without interactive draft prompts.
-- Regression coverage verifies draft persistence, project/version isolation, empty-draft rejection, edit/load/cancel flows, and clean target repository state.
-- Authenticated GitHub smoke testing remains environment-dependent and is not claimed unless performed.
+- RELEASE supports first-time release creation when the target project has no detectable version metadata.
+- Interactive first release defaults to `v0.1.0` or lets the user choose a custom SemVer.
+- `release --yes` uses `v0.1.0` when no project version is detected; projects with a known version retain patch/minor/major increment behavior.
+- HIKARI tags the current clean commit and does not create, edit, or bump files inside the target project.
+- Duplicate local/remote tags and GitHub Releases remain guarded; notes preview/edit and clean-tree checks remain in place.
+- Regression tests cover versionless default/custom releases and CLI routing.
 
 ## Identity
 
 - Project name: `hikari-lab`
 - Display identity: `HIKARI/.LAB`
-- Version: `0.6.8`
+- Version: `0.8.1`
 - Status: hybrid target + live-status dashboard with full 12-operation interactive CLI, outcome-accurate action history, beginner Git guide, Git history/log, and read-only auto troubleshooting
 - Runtime: Python 3.10+
-- Milestone: workflow polish / hybrid local-Git mode
+- Milestone: first-release support for versionless target projects
 
 ## Current implementation
 

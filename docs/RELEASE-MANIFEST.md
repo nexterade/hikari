@@ -4,20 +4,20 @@
 
 - Project: `hikari-lab`
 - Display identity: `HIKARI/.LAB`
-- Version: `0.6.8`
-- Artifact: `hikari-lab-v0.6.8.zip`
+- Version: `0.8.1`
+- Artifact: `hikari-lab-v0.8.1.zip`
 - Canonical test command: `python3 -m unittest discover -s tests -v`
-- Canonical test result: **111 unittest tests passed** against the exact extracted artifact.
-- Exact ZIP preflight: **PASS** against `hikari-lab-v0.6.8.zip`.
+- Canonical test result: **122 unittest tests passed** against the exact extracted artifact.
+- Exact ZIP preflight: **PASS** against `hikari-lab-v0.8.1.zip`.
 - Hosted GitHub Actions execution and real GitHub publication remain environment-dependent.
 
-## 0.6.8 change note
+## 0.8.1 change note
 
-- Interactive RELEASE supports preview, multiline editing, loading saved notes, and saving a draft for the target project/version.
-- Drafts are stored under HIKARI home (`HIKARI_HOME` override) outside the target repository; draft operations alone do not mutate Git state.
-- Non-interactive `--yes` uses generated notes without opening draft prompts; existing release safety checks remain active.
-- Regression tests cover persistence, project/version isolation, empty draft rejection, and interactive edit/load/cancel flows.
-- Canonical suite and exact-artifact preflight are required on the exact packaged ZIP; authenticated GitHub smoke testing remains environment-dependent.
+- RELEASE supports projects without detectable version metadata.
+- Interactive mode offers a first release at `v0.1.0` or custom SemVer; `--yes` chooses `v0.1.0`.
+- The target project is not modified to add or bump version metadata.
+- Existing clean-tree, duplicate-tag, changelog/commit-derived notes, and remote publication guards remain active.
+- Regression tests cover default/custom first releases and CLI routing.
 
 ## 0.6.7 change note
 

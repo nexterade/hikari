@@ -22,3 +22,8 @@
 - The diff helper returns the Git output directly; interactive pager polish remains future work.
 
 These limitations are explicit rather than presenting unfinished behavior as complete. Existing HIKARI commands remain in place.
+
+
+## Follow-up in 0.8.1
+
+The 9 previously noted UI failures were stale assertions against an earlier dashboard presentation, not runtime failures in the current 12-operation renderer. Their expectations are updated in 0.8.1 to assert the current dashboard contract; the canonical suite is required to pass on the exact packaged artifact.

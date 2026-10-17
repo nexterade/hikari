@@ -55,6 +55,56 @@ class ReleaseModeTests(unittest.TestCase):
             with self.assertRaisesRegex(GitError, "already exists"):
                 repo.tag("v1.2.3")
 
+    def test_first_release_without_project_version_defaults_to_v0_1_0(self):
+        from hikari.cli import release_interactive
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self._git(path, "init", "-q")
+            self._git(path, "config", "user.email", "test@example.invalid")
+            self._git(path, "config", "user.name", "HIKARI Test")
+            (path / "README.md").write_text("# Versionless project\n", encoding="utf-8")
+            self._git(path, "add", "README.md")
+            self._git(path, "commit", "-m", "initial project", "-q")
+            repo = GitRepo(path)
+            self.assertEqual(repo.local_version(), (None, None))
+            with patch("hikari.cli.success"), patch("hikari.cli.warning"):
+                release_interactive(repo, yes=True)
+            self.assertTrue(repo.tag_exists("v0.1.0"))
+            self.assertEqual(repo.local_version(), (None, None))
+
+    def test_first_release_supports_explicit_custom_version_without_metadata(self):
+        from hikari.cli import release_interactive
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self._git(path, "init", "-q")
+            self._git(path, "config", "user.email", "test@example.invalid")
+            self._git(path, "config", "user.name", "HIKARI Test")
+            (path / "README.md").write_text("# Versionless project\n", encoding="utf-8")
+            self._git(path, "add", "README.md")
+            self._git(path, "commit", "-m", "initial project", "-q")
+            repo = GitRepo(path)
+            with patch("hikari.cli._release_notes_preview", return_value="Initial release"), \
+                 patch("hikari.cli.confirm", return_value=True), \
+                 patch("builtins.input", return_value="v1.0.0"), \
+                 patch("hikari.cli.success"), patch("hikari.cli.warning"):
+                release_interactive(repo, custom=True)
+            self.assertTrue(repo.tag_exists("v1.0.0"))
+
+    def test_cli_release_patch_does_not_precompute_v0_0_1_for_versionless_project(self):
+        from unittest.mock import patch
+        from hikari import cli
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            self._git(path, "init", "-q")
+            self._git(path, "config", "user.email", "test@example.invalid")
+            self._git(path, "config", "user.name", "HIKARI Test")
+            (path / "README.md").write_text("# Versionless project\n", encoding="utf-8")
+            self._git(path, "add", "README.md")
+            self._git(path, "commit", "-m", "initial project", "-q")
+            with patch.object(cli, "release_interactive") as flow:
+                cli.main([str(path), "release", "patch"])
+            self.assertIsNone(flow.call_args.kwargs["version"])
+
 
 class ReleaseManagerMethodTests(unittest.TestCase):
     def test_local_tags_can_be_listed_and_deleted_without_touching_release_api(self):

@@ -6,7 +6,7 @@
 
 _Connect. Automate. Ship._
 
-[![Version](https://img.shields.io/badge/version-0.6.8-03E1FF?style=flat-square)](https://github.com/nexterade/hikari/releases)
+[![Version](https://img.shields.io/badge/version-0.8.1-03E1FF?style=flat-square)](https://github.com/nexterade/hikari/releases)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-00FFA3?style=flat-square)](LICENSE)
 [![Made with](https://img.shields.io/badge/made%20with-%E2%9D%A4%EF%B8%8F-DC1FFF?style=flat-square)](#)
@@ -17,7 +17,7 @@ _Connect. Automate. Ship._
 
 ---
 
-**HIKARI** adalah CLI interaktif untuk inspeksi project dan otomasi workflow Git/GitHub. Bekerja **pada folder target** — tidak perlu dipasang di dalam repo. Dashboard & utilitas lokal berjalan **tanpa internet dan tanpa Git**; operasi remote hanya saat dipilih eksplisit.
+**HIKARI** adalah CLI interaktif untuk inspeksi project dan otomasi workflow Git/GitHub. Bekerja **pada folder target** — tidak perlu dipasang di dalam repo. Dashboard & utilitas lokal berjalan **tanpa internet dan tanpa Git**; operasi remote hanya saat dipilih eksplisit. Dashboard hybrid menampilkan 12 menu dashboard hybrid dengan konteks target dan status repository secara read-only.
 
 > 🛡️ **Safety-first.** Konfirmasi `[y/N]` — default selalu **N**. Baca prompt, tinjau target, backup untuk yang berisiko.
 
@@ -70,9 +70,14 @@ _Connect. Automate. Ship._
 
 ### Status Riwayat
 
-`SUCCESS` · `FAILED` · `CANCELLED` · `BLOCKED` — disimpan **di luar** folder project. Token & credential **tidak** disimpan.
+`SUCCESS` · `FAILED` · `CANCELLED` · `BLOCKED` — disimpan **di luar** folder project. Token & credential **tidak** disimpan. Riwayat hasil aksi menyimpan hasil konkret tiap operasi tanpa menyimpan output command atau credential.
 
 ---
+
+
+### First release for projects without version metadata
+
+RELEASE no longer requires the target project to declare a version first. If no version is detected, the interactive flow offers a first release at `v0.1.0` or a custom SemVer. With `--yes`, the default first-release tag is `v0.1.0`. HIKARI creates a Git tag for the current clean commit; it does not write or bump version files in the target project. Existing duplicate-tag checks, release-note preview, and publication guards remain active.
 
 ## 🛡️ Safety-first
 
@@ -161,6 +166,6 @@ Detail lengkap → [docs/TUTORIAL.md](docs/TUTORIAL.md) · [docs/SECURITY.md](do
 光 · MIT License
 
 </div>
-## Roadmap commands (0.8.0)
+## Roadmap commands (0.8.0 — historical increment)
 
 New diagnostics and productivity commands include `hikari --version`, `hikari doctor`, `hikari completion bash|zsh|fish`, `hikari init`, `hikari PATH status --json`, `hikari PATH watch`, `hikari PATH notes`, and `hikari PATH time`. Additional Git/GitHub helpers include `diff`, `conflict`, `repos`, and `pr`/`issue`/`actions` wrappers around the `gh` CLI. See [docs/ROADMAP-COMMANDS.md](docs/ROADMAP-COMMANDS.md) for syntax, storage locations, and safety notes.

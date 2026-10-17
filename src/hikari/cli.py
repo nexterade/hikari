@@ -827,15 +827,18 @@ def release_interactive(
         warning("Working tree has uncommitted changes. Commit or stash them first; release cancelled safely.")
         return
     local_current, local_source = repo.local_version()
-    if not local_current:
-        warning("No local project version found. Set a version in project metadata before releasing.")
-        return
     current_version = local_current
-    print(f"  {color('CURRENT VERSION', DIM)}  {current_version}  {color(f'[{local_source}]', DIM)}")
+    if current_version:
+        print(f"  {color('CURRENT VERSION', DIM)}  {current_version}  {color(f'[{local_source}]', DIM)}")
+    else:
+        print(f"  {color('CURRENT VERSION', DIM)}  (not detected — first release)")
 
     if version:
         target_version = version if version.startswith("v") else f"v{version}"
     elif current:
+        if not current_version:
+            warning("This project has no detected version to release as-is. Choose a first-release version or provide --version.")
+            return
         target_version = current_version
     elif custom:
         typed = input("  Custom target version (e.g. v1.2.3): ").strip()
@@ -844,12 +847,15 @@ def release_interactive(
             raise ValueError(f"invalid semantic version: {typed}")
         target_version = typed if typed.startswith("v") else f"v{typed}"
     elif yes:
-        target_version = next_version(current_version, "patch")
+        target_version = next_version(current_version, "patch") if current_version else "v0.1.0"
     else:
-        suggested = next_version(current_version, "patch")
-        print("\n  [1] Quick release — use suggested next version")
-        print("  [2] Force release current version")
-        print("  [3] Custom version")
+        suggested = next_version(current_version, "patch") if current_version else "v0.1.0"
+        print("\n  [1] " + ("Quick release — use suggested next version" if current_version else "First release — start at v0.1.0"))
+        if current_version:
+            print("  [2] Force release current version")
+            print("  [3] Custom version")
+        else:
+            print("  [2] Custom first-release version")
         print("  [0] Cancel")
         choice = input(color("\n  ❯ ", MAGENTA)).strip()
         if choice == "0" or not choice:
@@ -857,10 +863,16 @@ def release_interactive(
             return
         if choice == "1":
             target_version = suggested
-        elif choice == "2":
+        elif choice == "2" and not current_version:
+            typed = input("  First-release version (e.g. v1.0.0): ").strip()
+            from .release import SEMVER
+            if not SEMVER.fullmatch(typed):
+                raise ValueError(f"invalid semantic version: {typed}")
+            target_version = typed if typed.startswith("v") else f"v{typed}"
+        elif choice == "2" and current_version:
             target_version = current_version
-        elif choice == "3":
-            typed = input("  Custom target version (e.g. v1.2.3): ").strip()
+        elif choice == "3" and current_version:
+            typed = input("  Custom version (e.g. v1.2.3): ").strip()
             from .release import SEMVER
             if not SEMVER.fullmatch(typed):
                 raise ValueError(f"invalid semantic version: {typed}")
@@ -899,7 +911,7 @@ def release_interactive(
         notes_source = "commit-derived draft (not found in changelog)"
         warning(f"No changelog entry for {target_version}; using a visible draft from {len(commits)} commit(s).")
 
-    print(f"\n  {color('CURRENT', DIM)}  {current_version}")
+    print(f"\n  {color('CURRENT', DIM)}  {current_version or '(not detected — first release)'}")
     print(f"  {color('TARGET', CYAN)}   {color(target_version, BOLD + WHITE)}")
     print(f"  {color('COMMITS', DIM)}  {len(commits)}")
     print(f"  {color('NOTES SOURCE', DIM)}  {notes_source}")
@@ -1311,7 +1323,9 @@ def main(argv: list[str] | None = None) -> None:
                 return
             version = args.version
             if version is None and not args.current and not args.custom:
-                local_current, _ = repo.local_version(); version = next_version(local_current or "v0.0.0", args.kind)
+                local_current, _ = repo.local_version()
+                if local_current:
+                    version = next_version(local_current, args.kind)
             release_interactive(repo, version=version, yes=args.yes, current=args.current, custom=args.custom)
         elif args.command == "watch":
             from .commands.watch import watch

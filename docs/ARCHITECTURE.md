@@ -41,7 +41,7 @@ Git remains authoritative once initialized. A missing `origin` is valid Git stat
 - confirmation policy
 - semantic terminal presentation
 - local version detection
-- release version calculation
+- release version calculation, including a first-release default when project metadata has no version
 - changelog-based release-note extraction
 - project-aware `.gitignore` generation
 
@@ -70,7 +70,7 @@ Git remains authoritative once initialized. A missing `origin` is valid Git stat
 
 SemVer is used for application releases. Project version detection is local-first and prefers structured manifests (`pyproject.toml`, `package.json`, `VERSION`, `version.txt`, `PROJECT_STATE.json`) before narrative files.
 
-Release notes come from the target project's `CHANGELOG.md` or `docs/CHANGELOG.md`. Exact target-version headings win over `Unreleased`.
+Release notes come from the target project's `CHANGELOG.md` or `docs/CHANGELOG.md`. Exact target-version headings win over `Unreleased`. When no version metadata is detected, first release defaults to `v0.1.0` (or a custom SemVer in interactive mode); release tagging never writes version metadata into the target project.
 
 ## .gitignore strategy
 
