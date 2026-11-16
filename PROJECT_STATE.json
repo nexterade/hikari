@@ -1,7 +1,7 @@
 {
   "project": "hikari-lab",
   "display_name": "HIKARI/.LAB",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "status": "12-operation dashboard; roadmap commands; safe first-release flow for projects without version metadata",
   "milestone": "Versionless first release",
   "runtime": "Python 3.10+",
@@ -20,5 +20,5 @@
     "chat_is_ephemeral": true,
     "artifact_is_continuous": true
   },
-  "state": "v0.8.1 first release support: projects without detected version can create v0.1.0 or custom SemVer tag without metadata mutation"
+  "state": "v0.8.2 first release support: projects without detected version can create v0.1.0 or custom SemVer tag without metadata mutation"
 }

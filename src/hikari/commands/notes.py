@@ -1,6 +1,6 @@
 """Private per-project Markdown notes."""
 from __future__ import annotations
-import hashlib, os, subprocess
+import hashlib, os
 from datetime import datetime
 from pathlib import Path
 
@@ -16,8 +16,8 @@ def list_notes(project: str | Path, home=None) -> str:
     path = notes_path(project, home); return path.read_text(encoding="utf-8") if path.exists() else "No notes yet."
 def edit(project: str | Path, home=None) -> None:
     path = notes_path(project, home); path.parent.mkdir(parents=True, exist_ok=True); path.touch(exist_ok=True)
-    editor = os.environ.get("EDITOR") or os.environ.get("VISUAL") or ("notepad" if os.name == "nt" else "vi")
-    subprocess.run([editor, str(path)], check=False)
+    from .editor import open_in_editor
+    open_in_editor(path)
 def clear(project: str | Path, home=None) -> bool:
     path = notes_path(project, home)
     if path.exists(): path.unlink(); return True

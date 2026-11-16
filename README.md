@@ -6,7 +6,7 @@
 
 _Connect. Automate. Ship._
 
-[![Version](https://img.shields.io/badge/version-0.8.1-03E1FF?style=flat-square)](https://github.com/nexterade/hikari/releases)
+[![Version](https://img.shields.io/badge/version-0.8.2-03E1FF?style=flat-square)](https://github.com/nexterade/hikari/releases)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-00FFA3?style=flat-square)](LICENSE)
 [![Made with](https://img.shields.io/badge/made%20with-%E2%9D%A4%EF%B8%8F-DC1FFF?style=flat-square)](#)

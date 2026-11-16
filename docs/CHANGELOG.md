@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.2 — Audit bug fixes
+- Fix Python 3.10 startup when `tomllib` is unavailable.
+- Preserve Git porcelain status paths and centralize change counting, including conflicts.
+- Fix auto-commit prefix heuristics so filenames such as `latest.json` do not look like tests/fixes.
+- Fix `release notes --write` to create versioned headings, insert at the top, and refuse duplicates.
+- Fix `notes show` to print notes without opening an editor.
+- Support `VISUAL`/`EDITOR` commands with arguments and clear missing-editor errors.
+- Fix `status --json` so a target without a version reports `null` instead of HIKARI's own version.
+- Fix GitHub PR/issue/actions argument validation, PR `--base`, and non-interactive create body/fill handling.
+- Tighten changelog discovery and prune skipped directories during recursive scans.
+- Fix literal `\n` sequences in CLI output.
+- Add regression coverage for B1–B10.
+
 ## 0.8.1 — First release for versionless projects
 - Allow RELEASE to proceed when the target project has no detected version metadata.
 - Offer `v0.1.0` as the first-release default and support a custom SemVer.

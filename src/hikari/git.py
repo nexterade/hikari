@@ -18,6 +18,18 @@ class GitError(RuntimeError):
     pass
 
 
+def iter_project_files(root: Path):
+    """Yield non-symlink project files while pruning known heavy/metadata dirs."""
+    import os
+    root = Path(root)
+    for current, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d.lower() not in SKIP_DIRS and not (Path(current) / d).is_symlink())
+        for filename in sorted(filenames):
+            path = Path(current) / filename
+            if not path.is_symlink():
+                yield path
+
+
 def project_inventory(root: Path) -> dict[str, object]:
     """Collect safe, local-only inventory metadata for human-readable reports."""
     ignored = SKIP_DIRS
@@ -116,7 +128,14 @@ class LocalProject:
             out.extend(f"  {k:<20} {v:>5} file(s)" for k, v in sorted(ext.items(), key=lambda item: (-item[1], item[0]))[:30])
         else:
             out.append("  (no files found)")
-        out.extend(["", "Largest files", *[f"  {human_size(p.stat().st_size):>10}  {p.relative_to(self.root)}" for p in sorted((p for p in self.root.rglob('*') if p.is_file() and not any(part in SKIP_DIRS for part in p.parts)), key=lambda p: p.stat().st_size, reverse=True)[:10]]])
+        largest = []
+        for p in iter_project_files(self.root):
+            try:
+                largest.append((p.stat().st_size, p))
+            except OSError:
+                continue
+        largest.sort(key=lambda item: item[0], reverse=True)
+        out.extend(["", "Largest files", *[f"  {human_size(size):>10}  {p.relative_to(self.root)}" for size, p in largest[:10]]])
         return "\n".join(out)
 
     def init_repo(self) -> "GitRepo":
@@ -190,6 +209,42 @@ def detect_local_version(root: Path) -> tuple[str | None, str | None]:
     return None, None
 
 
+def parse_porcelain(raw: str) -> list[tuple[str, str, str | None]]:
+    """Parse Git porcelain v1 -z output into (XY, path, original_path)."""
+    entries: list[tuple[str, str, str | None]] = []
+    fields = raw.split("\0")
+    i = 0
+    while i < len(fields):
+        field = fields[i]
+        i += 1
+        if not field:
+            continue
+        if len(field) < 3:
+            continue
+        code, path = field[:2], field[3:]
+        original = None
+        if code[0] in "RC" or code[1] in "RC":
+            if i < len(fields) and fields[i]:
+                original = fields[i]
+                i += 1
+        entries.append((code, path, original))
+    return entries
+
+
+def count_changes(entries: list[tuple[str, str, str | None]]) -> dict[str, int]:
+    counts = {"modified": 0, "added": 0, "deleted": 0, "untracked": 0}
+    for code, _path, _original in entries:
+        if code == "??":
+            counts["untracked"] += 1
+        elif "D" in code:
+            counts["deleted"] += 1
+        elif "A" in code or "?" in code:
+            counts["added"] += 1
+        else:
+            counts["modified"] += 1
+    return counts
+
+
 class GitRepo:
     def __init__(self, path: Path):
         self.root = path.expanduser().resolve()
@@ -217,14 +272,14 @@ class GitRepo:
     def _check_tools(self) -> None:
         self.run("rev-parse", "--is-inside-work-tree")
 
-    def run(self, *args: str, check: bool = True) -> str:
+    def run(self, *args: str, check: bool = True, strip: bool = True) -> str:
         proc = subprocess.run(
             ["git", *args], cwd=self.root, text=True, capture_output=True
         )
         if check and proc.returncode:
             detail = proc.stderr.strip() or proc.stdout.strip() or "git command failed"
             raise GitError(detail)
-        return proc.stdout.strip()
+        return proc.stdout.strip() if strip else proc.stdout
 
     def run_gh(self, *args: str) -> str:
         proc = subprocess.run(
@@ -245,23 +300,18 @@ class GitRepo:
         return bool(self.remote())
 
     def status_porcelain(self) -> str:
-        return self.run("status", "--porcelain")
+        return self.run("status", "--porcelain=v1", "-z", strip=False)
 
     def status_text(self) -> str:
         version, source = self.local_version()
         head = self.run("log", "-1", "--format=%h %s", check=False) or "(no commits yet)"
         upstream = self.run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False) or "(not configured)"
         dirty = self.status_porcelain()
-        counts = {"modified": 0, "added": 0, "deleted": 0, "untracked": 0}
-        for line in dirty.splitlines():
-            code = line[:2]
-            if "?" in code: counts["untracked"] += 1
-            elif "D" in code: counts["deleted"] += 1
-            elif "A" in code: counts["added"] += 1
-            else: counts["modified"] += 1
+        entries = parse_porcelain(dirty)
+        counts = count_changes(entries)
         out = ["\nPROJECT STATUS", "=" * 56, f"  Project       {self.name}", *inventory_lines(self.root),
                f"  Git branch    {self.branch()}", f"  Remote        {self.remote() or '(not configured)'}",
-               f"  Upstream      {upstream}", f"  Working tree  {'DIRTY' if dirty else 'CLEAN'} ({len(dirty.splitlines())} changed path(s))",
+               f"  Upstream      {upstream}", f"  Working tree  {'DIRTY' if entries else 'CLEAN'} ({len(entries)} changed path(s))",
                f"  Version       {version or '(not detected)'}" + (f" ({source})" if source else ""),
                f"  Last commit   {head}", "", "CHANGE COUNTS",
                f"  Modified      {counts['modified']}", f"  Added         {counts['added']}",
@@ -315,20 +365,16 @@ class GitRepo:
 
     def scan_text(self) -> str:
         raw = self.status_porcelain()
-        lines = raw.splitlines()
-        counts = {"modified": 0, "added": 0, "deleted": 0, "other": 0}
-        for line in lines:
-            code = line[:2]
-            if "D" in code: counts["deleted"] += 1
-            elif "A" in code or "?" in code: counts["added"] += 1
-            elif "M" in code or "R" in code or "C" in code: counts["modified"] += 1
-            else: counts["other"] += 1
+        entries = parse_porcelain(raw)
+        lines = [f"{code} {path}" + (f" -> {original}" if original else "") for code, path, original in entries]
+        change_counts = count_changes(entries)
+        counts = {**change_counts, "other": 0}
         version, source = self.local_version()
         head = self.run("log", "-1", "--format=%h %s", check=False) or "(no commits yet)"
         out = ["\nREPOSITORY FILE SCAN", "=" * 56, *inventory_lines(self.root),
                f"  Git branch    {self.branch()}", f"  Remote        {self.remote() or '(not configured)'}",
                f"  Version       {version or '(not detected)'}" + (f" ({source})" if source else ""),
-               f"  Last commit   {head}", f"  Changed files {len(lines)}", "", "CHANGE SUMMARY",
+               f"  Last commit   {head}", f"  Changed files {len(entries)}", "", "CHANGE SUMMARY",
                f"  Modified      {counts['modified']}", f"  Added         {counts['added']}",
                f"  Deleted       {counts['deleted']}", f"  Other         {counts['other']}", "", "CHANGED PATHS"]
         out.extend(f"  {line}" for line in lines) if lines else out.append("  ✓ No tracked or untracked changes detected.")
@@ -442,52 +488,34 @@ class GitRepo:
 
 
 def find_changelogs(root: Path) -> list[Path]:
-    """Discover project changelog/history files recursively without assuming a fixed folder."""
-    ignored = SKIP_DIRS
+    """Discover changelog/history files by exact basename patterns, pruning skipped dirs."""
+    import os
     extensions = {".md", ".mdx", ".rst", ".txt", ".adoc", ".asciidoc"}
-    semantic_terms = (
-        "changelog", "change-log", "change_log", "changes", "history",
-        "release-note", "release_note", "release notes", "version-history",
-        "version_history", "whatsnew", "what-s-new", "news"
-    )
-    found = []
+    pattern = re.compile(r"^(?:changelog|change-log|changes|history|release-notes?|version-history|whatsnew|news)(?:[-_.]v?\d+(?:\.\d+){0,2})?$", re.I)
+    found: list[Path] = []
     root = Path(root)
-    for path in root.rglob("*"):
-        if path.is_symlink():
-            continue
-        if not path.is_file() or path.suffix.lower() not in extensions:
-            continue
-        relative = path.relative_to(root)
-        if any(part.lower() in ignored for part in relative.parts):
-            continue
-        normalized_name = path.name.lower().replace(" ", "-")
-        if any(term in normalized_name for term in semantic_terms):
-            found.append(path)
+    for current, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d.lower() not in SKIP_DIRS and not (Path(current) / d).is_symlink())
+        for filename in sorted(filenames):
+            path = Path(current) / filename
+            if path.suffix.lower() not in extensions or path.is_symlink():
+                continue
+            stem = path.stem.replace(" ", "-").replace("_", "-")
+            if pattern.fullmatch(stem):
+                found.append(path)
 
-    # Do not privilege root or docs/ just because of their location. Sort by filename
-    # semantics only; build_changelog_notes prioritizes content matching the target version.
     def rank(path: Path):
-        name = path.name.lower().replace("_", "-").replace(" ", "-")
-        return (
-            0 if "changelog" in name or "change-log" in name else
-            1 if "release-note" in name else
-            2 if "history" in name or "changes" in name else
-            3,
-            name,
-            path.relative_to(root).as_posix().lower(),
-        )
+        name = path.stem.lower().replace("_", "-").replace(" ", "-")
+        return (0 if name.startswith("changelog") or name.startswith("change-log") else 1 if name.startswith("release-note") else 2 if name.startswith(("history", "changes")) else 3, name, path.relative_to(root).as_posix().lower())
     return sorted(found, key=rank)
 
 
 def auto_commit_message(repo: "GitRepo") -> str:
     """Infer a concise commit subject from changed paths and recent project documentation."""
-    status = repo.run("status", "--porcelain", "-uall", check=False)
+    status = repo.run("status", "--porcelain=v1", "-z", "-uall", check=False, strip=False)
     paths = []
-    for line in status.splitlines():
-        raw = line[3:].strip()
-        if " -> " in raw:
-            raw = raw.split(" -> ", 1)[1]
-        raw = raw.strip('"')
+    for _code, path, original in parse_porcelain(status):
+        raw = path or original
         if raw and raw not in paths:
             paths.append(raw)
     if not paths:
@@ -514,16 +542,17 @@ def auto_commit_message(repo: "GitRepo") -> str:
             except (OSError, UnicodeError):
                 pass
 
-    lowered_paths = " ".join(paths).lower()
-    # Determine intent from actual changed files, then use a relevant documented phrase.
-    if any("test" in p.lower() for p in paths) and all("test" in p.lower() for p in paths):
+    def is_test_path(path: str) -> bool:
+        parts = Path(path).parts
+        name = Path(path).name.lower()
+        return any(part.lower() in {"tests", "test", "__tests__"} for part in parts[:-1]) or name.startswith("test_") or name.endswith("_test.py") or name.endswith(".test.py") or name.endswith(".spec.py")
+
+    # Determine intent from actual changed files; avoid substring guesses such as
+    # "test" in latest.json or "page" in homepage.html.
+    if paths and all(is_test_path(p) for p in paths):
         prefix = "test"
-    elif any("docs/" in p.lower() or p.lower().endswith((".md", ".rst", ".txt")) for p in paths) and not any(p.lower().endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs")) for p in paths):
+    elif all(p.lower().endswith((".md", ".rst", ".txt", ".adoc", ".asciidoc")) or "docs/" in p.lower() for p in paths):
         prefix = "docs"
-    elif any(word in lowered_paths for word in ("fix", "bug", "patch")):
-        prefix = "fix"
-    elif any(word in lowered_paths for word in ("feature", "component", "screen", "page")):
-        prefix = "feat"
     else:
         prefix = "chore"
 

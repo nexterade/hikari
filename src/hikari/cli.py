@@ -11,7 +11,7 @@ import hashlib
 
 from ._version import get_version
 from .action_tracking import _ACTIVE_ACTION_RESULT, error, set_action_outcome as _set_action_outcome, success, warning, warning_outcome as _warning_outcome
-from .git import GitError, GitRepo, LocalProject, recommended_gitignore, auto_commit_message
+from .git import GitError, GitRepo, LocalProject, recommended_gitignore, auto_commit_message, count_changes, parse_porcelain
 from .release import build_changelog_notes, load_release_draft, next_version, save_release_draft
 from .misc import miscellaneous
 from .profile import generate_repository_profile
@@ -233,18 +233,9 @@ def _dashboard_snapshot(repo: GitRepo | LocalProject) -> dict[str, str]:
             "next_step": "Initialize Git only if you want local commit history",
         }
     dirty = repo.status_porcelain()
-    changed = len(dirty.splitlines())
-    counts = {"modified": 0, "added": 0, "deleted": 0, "untracked": 0}
-    for line in dirty.splitlines():
-        code = line[:2]
-        if "?" in code:
-            counts["untracked"] += 1
-        elif "D" in code:
-            counts["deleted"] += 1
-        elif "A" in code:
-            counts["added"] += 1
-        else:
-            counts["modified"] += 1
+    entries = parse_porcelain(dirty)
+    changed = len(entries)
+    counts = count_changes(entries)
     upstream = repo.run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)
     sync = "no upstream configured"
     if upstream:
@@ -310,9 +301,9 @@ def run_wizard(repo: GitRepo | LocalProject) -> None:
                     text = repo.status_text()
                     action_report = _action_status_text(repo)
                     marker = "RECENT ACTIONS"
-                    history = action_report[action_report.find(marker):] if marker in action_report else marker + "\\nNo action history yet."
+                    history = action_report[action_report.find(marker):] if marker in action_report else marker + "\nNo action history yet."
                 print(text)
-                print("\\n" + history)
+                print("\n" + history)
                 _set_action_outcome("SUCCESS", "Read-only project status and recent action history displayed")
             elif choice == "2":
                 section("Change scanner")
@@ -1045,14 +1036,14 @@ def _release_tag_details(repo: GitRepo, item: dict[str, object]) -> None:
         print(f"  Release name    : {release.get('name') or tag}")
         print(f"  Release status  : {status}")
         print(f"  Published       : {release.get('publishedAt') or 'unknown'}")
-    print("\\n  [1] Refresh details")
+    print("\n  [1] Refresh details")
     print("  [2] View GitHub Release")
     print("  [3] Delete GitHub Release")
     print("  [4] Delete local Git tag")
     print("  [5] Delete remote Git tag")
     print("  [6] Compare local and remote")
     print("  [0] Back")
-    action = input(color("\\n  ❯ ", MAGENTA)).strip()
+    action = input(color("\n  ❯ ", MAGENTA)).strip()
     if action in {"", "0"}:
         _set_action_outcome("CANCELLED", "Returned to tag list; no tag action performed")
         return
@@ -1252,24 +1243,17 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("conflict", help="interactive merge conflict resolver")
     repos = sub.add_parser("repos", help="manage multiple repositories"); repos.add_argument("action", choices=("add", "list", "status", "sync-all", "remove", "doctor")); repos.add_argument("target", nargs="?")
     for group in ("pr", "issue", "actions"):
-        cmd=sub.add_parser(group, help=f"GitHub {group} management"); cmd.add_argument("action", choices=("list", "view", "create", "merge", "close", "logs")); cmd.add_argument("number", nargs="?"); cmd.add_argument("--title"); cmd.add_argument("--base", default="main"); cmd.add_argument("--squash", action="store_true")
+        cmd=sub.add_parser(group, help=f"GitHub {group} management"); cmd.add_argument("action", choices=("list", "view", "create", "merge", "close", "logs")); cmd.add_argument("number", nargs="?"); cmd.add_argument("--title"); cmd.add_argument("--body"); cmd.add_argument("--base", default="main"); cmd.add_argument("--fill", action="store_true"); cmd.add_argument("--squash", action="store_true")
     plugins=sub.add_parser("plugins", help="list locally installed HIKARI plugins"); plugins.add_argument("action", choices=("list", "info", "reload"), nargs="?", default="list"); plugins.add_argument("name", nargs="?")
     return p
 
 def _status_json(repo: GitRepo | LocalProject, path: Path) -> dict:
     version, _ = repo.local_version()
-    result = {"project": repo.name, "path": str(path), "version": version or get_version(), "branch": "", "remote": "", "working_tree": "UNKNOWN", "changes": {"modified": 0, "added": 0, "deleted": 0, "untracked": 0}, "sync": "no upstream", "last_commit": {"hash": "", "subject": ""}, "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")}
+    result = {"project": repo.name, "path": str(path), "version": version, "version_source": repo.local_version()[1], "hikari_version": get_version(), "branch": "", "remote": "", "working_tree": "UNKNOWN", "changes": {"modified": 0, "added": 0, "deleted": 0, "untracked": 0}, "sync": "no upstream", "last_commit": {"hash": "", "subject": ""}, "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")}
     if isinstance(repo, GitRepo):
         result["branch"] = repo.branch(); result["remote"] = repo.remote()
-        lines = repo.status_porcelain().splitlines(); counts = result["changes"]
-        for line in lines:
-            if line.startswith("??"): counts["untracked"] += 1
-            else:
-                code = line[:2]
-                if "A" in code: counts["added"] += 1
-                elif "D" in code: counts["deleted"] += 1
-                elif "M" in code or "R" in code or "C" in code: counts["modified"] += 1
-        result["working_tree"] = "DIRTY" if lines else "CLEAN"
+        entries = parse_porcelain(repo.status_porcelain()); result["changes"].update(count_changes(entries))
+        result["working_tree"] = "DIRTY" if entries else "CLEAN"
         upstream = repo.run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)
         if upstream:
             counts_sync = repo.run("rev-list", "--left-right", "--count", f"HEAD...{upstream}", check=False).split()
@@ -1314,11 +1298,23 @@ def main(argv: list[str] | None = None) -> None:
         elif args.command == "release":
             if args.kind == "notes":
                 from .commands.release_notes import generate
-                notes = generate(path, None if args.from_last_tag else args.from_ref, args.to_ref, args.template)
+                notes_version = args.version or repo.local_version()[0]
+                if args.write and not notes_version:
+                    raise ValueError("release notes --write requires --version when project version is not detected")
+                notes = generate(path, None if args.from_last_tag else args.from_ref, args.to_ref, args.template, notes_version if args.write else args.version)
                 if args.write:
                     changelog = path / "docs" / "CHANGELOG.md"; changelog.parent.mkdir(parents=True, exist_ok=True)
-                    with changelog.open("a", encoding="utf-8") as handle: handle.write("\n\n" + notes + "\n")
-                    print(f"Release notes appended to {changelog}")
+                    existing = changelog.read_text(encoding="utf-8") if changelog.exists() else "# Changelog\n"
+                    version_heading = f"## v{notes_version.lstrip('vV')}"
+                    if re.search(rf"^##\s+v?{re.escape(notes_version.lstrip('vV'))}(?:\s|$)", existing, re.M | re.I):
+                        raise ValueError(f"Changelog already contains {version_heading}; refusing to duplicate it")
+                    insert_at = existing.find("\n## ")
+                    if insert_at < 0:
+                        updated = existing.rstrip() + "\n\n" + notes.rstrip() + "\n"
+                    else:
+                        updated = existing[:insert_at + 1] + notes.rstrip() + "\n\n" + existing[insert_at + 1:]
+                    changelog.write_text(updated, encoding="utf-8")
+                    print(f"Release notes written to {changelog}")
                 else: print(notes)
                 return
             version = args.version
@@ -1335,8 +1331,11 @@ def main(argv: list[str] | None = None) -> None:
             if args.action == "add":
                 if not args.text: raise ValueError("Usage: hikari notes add <text>")
                 print(f"Note added: {n.add(path, ' '.join(args.text))}")
-            elif args.action == "list": print(n.list_notes(path), end="" if n.list_notes(path).endswith("\n") else "\n")
-            elif args.action in {"edit", "show"}: n.edit(path)
+            elif args.action == "list":
+                content = n.list_notes(path); print(content, end="" if content.endswith("\n") else "\n")
+            elif args.action == "show":
+                content = n.list_notes(path); print(content, end="" if content.endswith("\n") else "\n")
+            elif args.action == "edit": n.edit(path)
             elif args.action == "clear":
                 if confirm("Delete all notes for this project?"): print("Notes cleared." if n.clear(path) else "No notes to clear.")
                 else: print("Cancelled.")
@@ -1378,9 +1377,18 @@ def main(argv: list[str] | None = None) -> None:
             elif args.action == "sync-all": print("Bulk sync is intentionally not automated yet; run sync per repository after reviewing each project.")
         elif args.command in {"pr", "issue", "actions"}:
             from .commands.github import gh
-            maps={"pr":{"list":["pr","list"],"view":["pr","view",args.number or ""],"create":["pr","create"],"merge":["pr","merge",args.number or ""],"close":["pr","close",args.number or ""]},"issue":{"list":["issue","list"],"view":["issue","view",args.number or ""],"create":["issue","create"],"close":["issue","close",args.number or ""]},"actions":{"list":["run","list"],"view":["run","view",args.number or ""],"logs":["run","view",args.number or "","--log"]}}
-            cmd=maps[args.command][args.action]
+            maps={"pr":{"list":["pr","list"],"view":["pr","view"],"create":["pr","create"],"merge":["pr","merge"],"close":["pr","close"]},"issue":{"list":["issue","list"],"view":["issue","view"],"create":["issue","create"],"close":["issue","close"]},"actions":{"list":["run","list"],"view":["run","view"],"logs":["run","view","--log"]}}
+            needs_number = args.action in {"view", "merge", "close", "logs"}
+            if needs_number and (not args.number or not args.number.isdigit()):
+                raise ValueError(f"{args.command} {args.action} requires a numeric number")
+            if args.action == "create" and not args.body and not args.fill:
+                raise ValueError(f"{args.command} create requires --body or --fill in non-interactive mode")
+            cmd=maps[args.command][args.action][:]
+            if needs_number: cmd.append(args.number)
             if args.title: cmd += ["--title",args.title]
+            if args.command == "pr" and args.action == "create": cmd += ["--base", args.base]
+            if args.body: cmd += ["--body", args.body]
+            if args.fill: cmd.append("--fill")
             if args.action == "merge" and args.squash: cmd.append("--squash")
             print(gh(cmd,path,confirm=args.action in {"merge","close"}))
         elif args.command == "plugins":

@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import re
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
+    tomllib = None
 from pathlib import Path
 
 _TOPIC_RULES = (
@@ -34,7 +37,8 @@ def generate_repository_profile(root: Path) -> dict[str, object]:
                 pass
     project: dict = {}
     try:
-        project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")).get("project", {})
+        if tomllib is not None:
+            project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8")).get("project", {})
     except (OSError, UnicodeError, ValueError):
         pass
     name = str(project.get("name") or root.name).strip()
