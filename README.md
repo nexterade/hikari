@@ -6,7 +6,7 @@
 
 _Connect. Automate. Ship._
 
-[![Version](https://img.shields.io/badge/version-0.8.2-03E1FF?style=flat-square)](https://github.com/nexterade/hikari/releases)
+[![Version](https://img.shields.io/badge/version-0.9.0-03E1FF?style=flat-square)](https://github.com/nexterade/hikari/releases)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-00FFA3?style=flat-square)](LICENSE)
 [![Made with](https://img.shields.io/badge/made%20with-%E2%9D%A4%EF%B8%8F-DC1FFF?style=flat-square)](#)
@@ -27,7 +27,7 @@ _Connect. Automate. Ship._
 
     # 1. Install
     git clone https://github.com/nexterade/hikari.git
-    cd hikari && python -m pip install .
+    cd hikari && python -m pip install -e .   # -e: edit source langsung berlaku
 
     # 2. Jalankan pada project target
     hikari /path/to/your/project
@@ -155,6 +155,7 @@ Default: **Solana-Inspired** — Ocean Blue × Surge Green × Purple Dino × Gra
 
 | Masalah | Solusi |
 |---|---|
+| Kode/fitur baru **tidak terasa** (masih perilaku lama) | `pip install .` itu **menyalin** kode. Jalankan `hikari doctor` (baris *HIKARI code*), lalu `pip install -e .` atau `pip install --upgrade --force-reinstall .` di folder source. Cek versi: `hikari --version` |
 | `hikari: command not found` | `python -m pip install .` atau `python -m hikari` |
 | Python terlalu lama | Cek `python --version` (butuh 3.10+) |
 | Git tidak ditemukan | `git --version`, cek `PATH`. Local Mode tetap jalan. |

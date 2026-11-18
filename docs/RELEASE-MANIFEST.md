@@ -4,12 +4,19 @@
 
 - Project: `hikari-lab`
 - Display identity: `HIKARI/.LAB`
-- Version: `0.8.1`
-- Artifact: `hikari-lab-v0.8.1.zip`
+- Version: `0.9.0`
+- Artifact: `hikari-lab-v0.9.0.zip`
 - Canonical test command: `python3 -m unittest discover -s tests -v`
-- Canonical test result: **122 unittest tests passed** against the exact extracted artifact.
-- Exact ZIP preflight: **PASS** against `hikari-lab-v0.8.1.zip`.
+- Canonical test result: **151 unittest tests passed** against the exact extracted artifact.
+- Exact ZIP preflight: **PASS** against `hikari-lab-v0.9.0.zip`.
 - Hosted GitHub Actions execution and real GitHub publication remain environment-dependent.
+
+## 0.9.0 change note
+
+- Init Git preflight and actionable permission errors; local-mode TROUBLESHOOT.
+- Smart commit-message engine with reasons, history-learned style, and secret-file warnings.
+- `hikari doctor` shows the running install location.
+- Artifact is flat-root and named `hikari-lab-v0.9.0.zip`.
 
 ## 0.8.1 change note
 

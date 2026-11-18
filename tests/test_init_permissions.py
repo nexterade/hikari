@@ -82,5 +82,14 @@ class InitPermissionTests(unittest.TestCase):
             self.assertNotIn("Termux tips", permission_help(self.root))
 
 
+class DoctorInstallRowTests(unittest.TestCase):
+    def test_doctor_reports_running_code_location(self):
+        from hikari.commands.doctor import check_environment
+        ok, value, note = check_environment(".")[-1]
+        self.assertTrue(ok)
+        self.assertTrue(value.endswith("hikari"))
+        self.assertTrue(note)
+
+
 if __name__ == "__main__":
     unittest.main()

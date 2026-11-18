@@ -30,10 +30,13 @@ def check_environment(target: Path | str = ".") -> list[tuple[bool, str, str]]:
     except OSError: backup_ok, backup_note = False, "cannot create backup folder"
     checks.append((backup_ok, str(backups), backup_note))
     config = home / "config.toml"; checks.append((True, str(config), "default (not created)" if not config.exists() else ""))
+    pkg = Path(__file__).resolve().parents[1]
+    copy = any(part in {"site-packages", "dist-packages"} for part in pkg.parts)
+    checks.append((True, str(pkg), "NOTE: installed COPY — edits in your checkout are ignored; run: pip install -e ." if copy else "running from source checkout"))
     return checks
 
 def run(target: Path | str = ".") -> int:
-    labels = ["Python", "Git", "gh CLI", "gh auth", "Target folder", "Backup folder", "Config file"]
+    labels = ["Python", "Git", "gh CLI", "gh auth", "Target folder", "Backup folder", "Config file", "HIKARI code"]
     checks = check_environment(target)
     print("─" * 64 + "\n  # HIKARI DOCTOR\n" + "─" * 64)
     for label, (ok, value, note) in zip(labels, checks):

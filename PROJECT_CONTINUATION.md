@@ -2,7 +2,7 @@
 
 ## Current
 
-HIKARI/.LAB 0.8.1 implements a standalone interactive wizard for both plain local projects and Git repositories.
+HIKARI/.LAB 0.9.0 implements a standalone interactive wizard for both plain local projects and Git repositories.
 
 ## What works
 
@@ -58,6 +58,10 @@ Historical package was `hikari-lab-v0.6.8.zip`. Canonical test command: `python3
 ## Historical 0.6.8 release-note draft flow
 Interactive release preparation can use generated notes, edit multiline Markdown, load a saved project/version draft, or save the current draft under HIKARI home (`HIKARI_HOME` override). Draft operations do not mutate the target repository. `--yes` uses generated notes without interactive prompts.
 
+
+## 0.9.0 changes
+
+Init permission diagnostics, local TROUBLESHOOT, smart offline commit messages (`commit_message.py`), and a doctor install-source check. Every change bumps VERSION, pyproject, README badge, STATE, RELEASE-MANIFEST, PROJECT_STATE, BOOT, CONTINUATION, and CHANGELOG together; the artifact is `hikari-lab-v<version>.zip` with a flat root.
 
 ## 0.8.1 first-release flow
 

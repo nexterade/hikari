@@ -1,4 +1,11 @@
-# 0.8.1 — First Release Without Version Metadata
+# 0.9.0 — Init Diagnostics and Smart Commit Messages
+
+- REPOSITORY → Initialize checks write access first and prints copy-paste fix steps (Termux/Android aware) instead of a bare `.git: Permission denied`.
+- Menu 11 TROUBLESHOOT works for local (non-Git) projects with a read-only permission/ownership diagnosis.
+- Auto commit message is a deterministic offline engine (`hikari.commit_message`): file kind/category, diff signals, version bumps, CHANGELOG entries, rename/delete, body for large changes, style learned from history, secret-file warnings.
+- `hikari doctor` reports which copy of HIKARI is running and warns when it is an installed copy rather than the source checkout.
+
+## 0.8.1 — First Release Without Version Metadata
 
 - RELEASE supports first-time release creation when the target project has no detectable version metadata.
 - Interactive first release defaults to `v0.1.0` or lets the user choose a custom SemVer.
@@ -11,7 +18,7 @@
 
 - Project name: `hikari-lab`
 - Display identity: `HIKARI/.LAB`
-- Version: `0.8.1`
+- Version: `0.9.0`
 - Status: hybrid target + live-status dashboard with full 12-operation interactive CLI, outcome-accurate action history, beginner Git guide, Git history/log, and read-only auto troubleshooting
 - Runtime: Python 3.10+
 - Milestone: first-release support for versionless target projects

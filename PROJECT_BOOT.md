@@ -6,7 +6,7 @@
 
 ## Current version
 
-`0.8.1`
+`0.9.0`
 
 ## Current state
 
@@ -70,6 +70,10 @@ The dashboard uses a responsive, single-column renderer for portrait and landsca
 New interactive action records use SUCCESS, FAILED, CANCELLED, or BLOCKED with operation-specific result details. Read-only reports and local utilities record their concrete result; partial success and skipped remote publication are summarized without storing command output or credentials. Git-required actions in Local Mode are BLOCKED; explicit cancellation and nested back navigation are not reported as generic completion.
 
 
-## Current release behavior — 0.8.1
+## Current release behavior — 0.9.0
+
+Init Git fails early with actionable permission help; menu 11 works without Git; auto commit messages come from the offline rule engine in `src/hikari/commit_message.py` (type from changed files and diff signals, style learned from recent history).
+
+## Previous release behavior — 0.8.1
 
 Projects with no detectable version can create a first release. Interactive mode offers `v0.1.0` or a custom SemVer; `--yes` selects `v0.1.0`. The workflow tags the current clean commit and never writes version metadata into the target project.

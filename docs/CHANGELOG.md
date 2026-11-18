@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased — Init diagnostics, smarter commit messages
+## 0.9.0 — Init diagnostics, smarter commit messages, install check
 - Auto commit message rewritten as `hikari.commit_message`: file kind/category, real diff signals (fix wording, new files, new public symbols), version bumps, CHANGELOG entries, rename/delete, and a short body for large changes.
 - Learns the repository's style from recent history (Conventional Commits vs plain sentences, with/without scopes).
 - PUSH/SYNC now show the suggestion with the reasons behind it; Enter accepts, typing overrides.
 - Warn about secret-looking files (`.env`, `*.pem`, `id_rsa`); such files are never read.
 - `auto_commit_message()` keeps its signature and returns the subject only.
 - Add `tests/test_smart_commit_message.py`.
+- `hikari doctor` shows which HIKARI copy is running and warns when it is an installed copy (edits to a checkout are ignored until `pip install -e .`).
 
 - `git init` from REPOSITORY now checks folder write access first and fails with copy-paste fix steps instead of a bare `.git: Permission denied`.
 - Explain missing `git` binary, non-directory `.git`, and `dubious ownership` errors.
