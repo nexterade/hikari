@@ -82,6 +82,88 @@ def inventory_lines(root: Path) -> list[str]:
         lines.append("  Latest file   (no files found)")
     return lines
 
+def _is_termux() -> bool:
+    import os
+    return bool(os.environ.get("TERMUX_VERSION")) or "com.termux" in os.environ.get("PREFIX", "")
+
+
+def write_access_report(root: Path) -> list[tuple[bool, str, str]]:
+    """Read-only permission checks for a target folder: (ok, label, detail).
+
+    Only inspects metadata (stat/os.access); never creates or changes anything.
+    """
+    import os
+    import stat as _stat
+    root = Path(root)
+    rows: list[tuple[bool, str, str]] = []
+    try:
+        st = root.stat()
+    except OSError as exc:
+        return [(False, "Folder", f"cannot read folder metadata: {exc}")]
+    uid = os.getuid() if hasattr(os, "getuid") else None
+    mode = _stat.filemode(st.st_mode)
+    owner_ok = uid is None or st.st_uid == uid
+    rows.append((owner_ok, "Owner", f"folder uid={st.st_uid}, you uid={uid}" + ("" if owner_ok else "  (folder belongs to another user/app)")))
+    rows.append((True, "Mode", mode))
+    w_ok = os.access(root, os.W_OK)
+    x_ok = os.access(root, os.X_OK)
+    rows.append((w_ok, "Writable", "yes" if w_ok else "NO — HIKARI/Git cannot create files here"))
+    rows.append((x_ok, "Enterable", "yes" if x_ok else "NO — folder lacks the execute (x) bit"))
+    dot_git = root / ".git"
+    if dot_git.is_symlink() or dot_git.exists():
+        if dot_git.is_dir():
+            g_ok = os.access(dot_git, os.W_OK | os.X_OK)
+            rows.append((g_ok, ".git", "exists (directory)" + ("" if g_ok else " but is NOT writable")))
+        else:
+            rows.append((False, ".git", "exists but is a FILE/symlink, not a directory"))
+    else:
+        rows.append((True, ".git", "not present"))
+    return rows
+
+
+def permission_help(root: Path) -> str:
+    """Actionable, copy-paste friendly fix instructions for a non-writable target."""
+    root = Path(root)
+    lines = [
+        f"Cannot write inside: {root}",
+        "The folder is not writable by the user running HIKARI, so Git cannot create .git there.",
+        "Nothing was changed. Fix it, then try again:",
+        f"  1. Inspect:   ls -ld \"{root}\"     (also: id -u)",
+        f"  2. Own it:    chmod -R u+rwX \"{root}\"",
+        "  3. If step 2 says 'Operation not permitted', the folder is owned by another",
+        "     user/app (e.g. extracted by a file manager or with root). Make a clean copy:",
+        f"       cp -r \"{root}\" \"{root}_new\" && mv \"{root}\" \"{root}_old\" && mv \"{root}_new\" \"{root}\"",
+    ]
+    if _is_termux():
+        lines += [
+            "  Termux tips:",
+            "    - Keep projects inside $HOME (~/project). Do NOT use /sdcard or ~/storage/shared:",
+            "      shared storage cannot hold a normal .git (no chmod/symlink support).",
+            "    - Run: termux-setup-storage  only if you intentionally copy files to/from shared storage.",
+            "    - Do not run Termux commands with 'su'/root; it creates root-owned files.",
+        ]
+    lines.append("  Verify with:  hikari doctor " + str(root) + "   or menu [11] TROUBLESHOOT")
+    return "\n".join(lines)
+
+
+def local_troubleshoot_text(root: Path) -> str:
+    """Read-only diagnosis for projects that are not Git repositories yet."""
+    import shutil
+    rows = write_access_report(root)
+    out = ["\nLOCAL PROJECT DIAGNOSIS (read-only)", "=" * 56, f"  Target        {root}"]
+    git_path = shutil.which("git")
+    out.append(f"  {'✓' if git_path else '✗'} git           {git_path or 'not found — install it (Termux: pkg install git)'}")
+    for ok, label, detail in rows:
+        out.append(f"  {'✓' if ok else '✗'} {label:<13} {detail}")
+    if any(not ok for ok, label, _ in rows if label in {"Writable", "Enterable", ".git", "Folder"}) :
+        out += ["", permission_help(root)]
+    elif not git_path:
+        out += ["", "Next: install Git, then use [7] REPOSITORY → [1] to initialize."]
+    else:
+        out += ["", "Next: everything looks fine. Use [7] REPOSITORY → [1] to initialize local Git."]
+    out.append("\nSafety: diagnosis is read-only. Nothing was created, changed, or uploaded.")
+    return "\n".join(out)
+
 
 class LocalProject:
     """Project target that does not require Git.
@@ -139,11 +221,24 @@ class LocalProject:
         return "\n".join(out)
 
     def init_repo(self) -> "GitRepo":
-        proc = subprocess.run(["git", "init"], cwd=self.root, text=True, capture_output=True)
+        import os
+        if not os.access(self.root, os.W_OK | os.X_OK):
+            raise GitError(permission_help(self.root))
+        git_dir = self.root / ".git"
+        if git_dir.is_symlink() or (git_dir.exists() and not git_dir.is_dir()):
+            raise GitError(f"{git_dir} already exists but is not a directory. Rename or remove it, then retry.")
+        try:
+            proc = subprocess.run(["git", "init"], cwd=self.root, text=True, capture_output=True)
+        except FileNotFoundError:
+            raise GitError("git is not installed or not on PATH. Termux: pkg install git — then retry.") from None
         if proc.returncode:
-            raise GitError(proc.stderr.strip() or proc.stdout.strip() or "git init failed")
+            detail = proc.stderr.strip() or proc.stdout.strip() or "git init failed"
+            if "permission denied" in detail.lower():
+                raise GitError(f"{detail}\n\n{permission_help(self.root)}")
+            if "dubious ownership" in detail.lower():
+                raise GitError(f"{detail}\n\nFix: git config --global --add safe.directory \"{self.root}\"")
+            raise GitError(detail)
         return GitRepo(self.root)
-
 
 
 def recommended_gitignore(root: Path) -> str:

@@ -144,6 +144,47 @@ Default: **Solana-Inspired** — Ocean Blue × Surge Green × Purple Dino × Gra
 | `gh` belum login | `gh auth status` |
 | PUSH ditolak (dirty) | `git status` → commit/stash dulu |
 | Warna berantakan | `NO_COLOR=1 hikari /path` |
+| `.git: Permission denied` saat **REPOSITORY → Init** | Folder target tidak writable → lihat [Permission denied](#-permission-denied-saat-init-git-termuxandroid) |
+| `git: not found` / `git is not installed` | Termux: `pkg install git` · Debian/Ubuntu: `sudo apt install git` |
+| `dubious ownership` | `git config --global --add safe.directory /path/project` |
+| Menu **11** di mode lokal | Sekarang menampilkan diagnosis izin folder (read-only), tanpa perlu Git |
+| `hikari doctor` ada ✗ di *Target folder* | Folder tidak ada / tidak writable → perbaiki izin (lihat bawah) |
+
+### 🔐 Permission denied saat Init Git (Termux/Android)
+
+Gejala: **REPOSITORY → [1] Initialize** gagal dengan pesan seperti
+`/data/data/com.termux/files/home/proyek/.git: Permission denied`.
+
+**Penyebab:** bukan bug HIKARI — user yang menjalankan HIKARI tidak punya izin *tulis* di folder target, jadi Git tidak bisa membuat `.git`. Penyebab paling umum:
+
+1. Folder dibuat/diekstrak oleh **app lain** (file manager, ZIP extractor) atau dengan **root/`su`** → pemiliknya bukan user Termux.
+2. Izin folder terlanjur read-only (`dr-xr-xr-x`), misal hasil ekstrak arsip.
+3. Folder ada di **shared storage** (`/sdcard`, `~/storage/shared`) → tidak mendukung `chmod`/symlink, `.git` sering gagal dibuat.
+4. Sudah ada `.git` berupa *file* atau folder yang izinnya rusak.
+
+**Diagnosis cepat (read-only):** jalankan `hikari /path/proyek`, pilih **11 — TROUBLESHOOT** (tersedia juga tanpa Git), atau:
+
+    hikari doctor /path/proyek
+    ls -ld /path/proyek      # lihat pemilik & izin
+    id -u                    # UID kamu; harus sama dengan pemilik folder
+
+**Perbaikan, urut dari yang paling aman:**
+
+    # 1) Beri izin tulis ke diri sendiri
+    chmod -R u+rwX /path/proyek
+
+    # 2) Kalau muncul "Operation not permitted" (pemilik beda) → salin bersih lalu ganti
+    cp -r /path/proyek /path/proyek_new
+    mv /path/proyek /path/proyek_old && mv /path/proyek_new /path/proyek
+
+    # 3) Kalau foldernya di /sdcard → pindahkan ke home Termux
+    cp -r /sdcard/proyek ~/proyek && hikari ~/proyek
+
+    # 4) Kalau .git berupa file/rusak (cek dulu isinya!)
+    ls -la /path/proyek/.git
+    mv /path/proyek/.git /path/proyek/.git.bak
+
+Lalu ulangi **REPOSITORY → [1]**. Tips Termux: simpan project di `~/` (bukan shared storage), jangan jalankan Termux sebagai root, dan pasang Git dengan `pkg install git`.
 
 Detail lengkap → [docs/TUTORIAL.md](docs/TUTORIAL.md) · [docs/SECURITY.md](docs/SECURITY.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 

@@ -11,7 +11,7 @@ import hashlib
 
 from ._version import get_version
 from .action_tracking import _ACTIVE_ACTION_RESULT, error, set_action_outcome as _set_action_outcome, success, warning, warning_outcome as _warning_outcome
-from .git import GitError, GitRepo, LocalProject, recommended_gitignore, auto_commit_message, count_changes, parse_porcelain
+from .git import GitError, GitRepo, LocalProject, recommended_gitignore, auto_commit_message, count_changes, parse_porcelain, local_troubleshoot_text
 from .release import build_changelog_notes, load_release_draft, next_version, save_release_draft
 from .misc import miscellaneous
 from .profile import generate_repository_profile
@@ -311,7 +311,7 @@ def run_wizard(repo: GitRepo | LocalProject) -> None:
                     text = repo.scan_text()
                 print(text)
                 _set_action_outcome("SUCCESS", "Project inventory and change scan completed")
-            elif choice in {"3", "4", "5", "6", "9", "11"} and not isinstance(repo, GitRepo):
+            elif choice in {"3", "4", "5", "6", "9"} and not isinstance(repo, GitRepo):
                 warning("This operation requires a Git repository. Use [7] REPOSITORY to initialize Git first.")
                 _set_action_outcome("BLOCKED", "Requires Git; initialize the target repository first")
             elif choice == "3":
@@ -340,8 +340,13 @@ def run_wizard(repo: GitRepo | LocalProject) -> None:
                 git_guide()
                 _set_action_outcome("SUCCESS", "Read-only Git Guide displayed")
             elif choice == "11":
-                troubleshoot(repo)
-                _set_action_outcome("SUCCESS", "Read-only Git diagnosis displayed; no repository changes made")
+                if isinstance(repo, GitRepo):
+                    troubleshoot(repo)
+                    _set_action_outcome("SUCCESS", "Read-only Git diagnosis displayed; no repository changes made")
+                else:
+                    section("Auto troubleshoot — local project (read-only)")
+                    print(local_troubleshoot_text(repo.root))
+                    _set_action_outcome("SUCCESS", "Read-only local diagnosis displayed; nothing was changed")
             elif choice == "12":
                 section("Miscellaneous")
                 miscellaneous(repo.root)

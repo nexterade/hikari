@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — Init diagnostics
+- `git init` from REPOSITORY now checks folder write access first and fails with copy-paste fix steps instead of a bare `.git: Permission denied`.
+- Explain missing `git` binary, non-directory `.git`, and `dubious ownership` errors.
+- Menu [11] TROUBLESHOOT now works for local (non-Git) projects with a read-only permission/ownership diagnosis.
+- README: new Termux/Android "Permission denied" troubleshooting section and extra table rows.
+- Add regression tests in `tests/test_init_permissions.py`.
+
 ## 0.8.2 — Audit bug fixes
 - Fix Python 3.10 startup when `tomllib` is unavailable.
 - Preserve Git porcelain status paths and centralize change counting, including conflicts.
