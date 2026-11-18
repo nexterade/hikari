@@ -12,6 +12,7 @@ import hashlib
 from ._version import get_version
 from .action_tracking import _ACTIVE_ACTION_RESULT, error, set_action_outcome as _set_action_outcome, success, warning, warning_outcome as _warning_outcome
 from .git import GitError, GitRepo, LocalProject, recommended_gitignore, auto_commit_message, count_changes, parse_porcelain, local_troubleshoot_text
+from .commit_message import suggest_commit_message
 from .release import build_changelog_notes, load_release_draft, next_version, save_release_draft
 from .misc import miscellaneous
 from .profile import generate_repository_profile
@@ -389,6 +390,22 @@ def run_wizard(repo: GitRepo | LocalProject) -> None:
 
 
 
+def _ask_commit_message(repo: GitRepo) -> str:
+    """Show the smart suggestion (with reasons) and let the user accept or override it."""
+    suggestion = suggest_commit_message(repo)
+    print(f"  Suggested message: {color(suggestion.subject, CYAN)}")
+    for reason in suggestion.reasons:
+        print(f"    {color('·', DIM)} {color(reason, DIM)}")
+    for note in suggestion.warnings:
+        warning(note)
+    if suggestion.body:
+        print(color("    (a short file list will be added as the commit body)", DIM))
+    raw = input("  Commit message [Enter = use suggestion, or type your own]: ").strip()
+    if not raw or raw.lower() == "auto":
+        return suggestion.full
+    return raw
+
+
 def sync_hub(repo: GitRepo | LocalProject) -> None:
     """Combine guided sync and the explicitly high-risk force-sync workflow."""
     print("  [1] Guided SYNC (review, reconcile, optional commit/push)")
@@ -687,8 +704,7 @@ def push_interactive(repo: GitRepo) -> None:
         warning("Unknown choice. Push cancelled.")
         return
 
-    raw_message = input("  Commit message [auto: scan project changes]: ").strip()
-    message = auto_commit_message(repo) if not raw_message or raw_message.lower() == "auto" else raw_message
+    message = _ask_commit_message(repo)
     print(f"  Commit message: {message}")
     warning("This will stage all detected changes, create a local commit, and push it to the configured remote.")
     confirm = input("  Commit + push? [y/N] ").strip().lower()
@@ -737,8 +753,7 @@ def sync(repo: GitRepo, yes: bool = False) -> None:
         warning("Sync cancelled. No changes were made.")
         return
 
-    raw_message = input("  Commit message [auto: scan project changes]: ").strip()
-    message = auto_commit_message(repo) if not raw_message or raw_message.lower() == "auto" else raw_message
+    message = _ask_commit_message(repo)
     print(f"  Commit message: {message}")
     with spinner("Staging changes"):
         repo.add_all()

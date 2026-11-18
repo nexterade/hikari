@@ -68,6 +68,24 @@ _Connect. Automate. Ship._
 | **11** | **TROUBLESHOOT** | Diagnostik read-only |
 | **12** | **MISC** | Tree, Grep, Hasher, Backup Rotator, dll |
 
+### 🧠 Auto commit message
+
+Di **PUSH → Commit + push** dan **SYNC**, tekan **Enter** untuk memakai pesan otomatis. HIKARI membaca perubahan asli (status, diff, riwayat commit) — **offline, tanpa AI/jaringan**, dan menampilkan *alasan* tiap saran.
+
+| Yang dideteksi | Hasil |
+|---|---|
+| File source baru | `feat: add engine.py` |
+| Kata `fix/bug/crash/typo` di baris yang kamu tambah | `fix: …` |
+| Fungsi/class publik baru (Python, JS/TS, Go, Rust) | `feat: add shiny, Engine` |
+| Hanya test / docs / CI / dependency (`pyproject`, `package.json`, lockfile) | `test:` · `docs:` · `ci:` · `build:` |
+| Rename / hapus file | `refactor: rename a.py to b.py` · `chore: remove x.py` |
+| Naik versi (`VERSION`, `pyproject.toml`, dll.) | `chore: bump version to v1.2.3` |
+| Entri CHANGELOG yang ikut di-commit | dipakai sebagai subjek, mis. `fix: startup failure when tomllib is missing` |
+| ≥ 4 file | subjek ringkas + body berisi daftar file |
+| Riwayat repo memakai kalimat biasa / scope | gaya mengikuti riwayat (`Add new.py` / `feat(api): …`) |
+
+Aturan aman: subjek ≤ 72 karakter; tidak mengarang maksud (jika tak ada sinyal → `chore: update <file>`); file mirip rahasia (`.env`, `*.pem`, `id_rsa`) **tidak pernah dibaca** dan memunculkan peringatan; ketik pesan sendiri kapan saja untuk menimpa saran.
+
 ### Status Riwayat
 
 `SUCCESS` · `FAILED` · `CANCELLED` · `BLOCKED` — disimpan **di luar** folder project. Token & credential **tidak** disimpan. Riwayat hasil aksi menyimpan hasil konkret tiap operasi tanpa menyimpan output command atau credential.

@@ -606,67 +606,10 @@ def find_changelogs(root: Path) -> list[Path]:
 
 
 def auto_commit_message(repo: "GitRepo") -> str:
-    """Infer a concise commit subject from changed paths and recent project documentation."""
-    status = repo.run("status", "--porcelain=v1", "-z", "-uall", check=False, strip=False)
-    paths = []
-    for _code, path, original in parse_porcelain(status):
-        raw = path or original
-        if raw and raw not in paths:
-            paths.append(raw)
-    if not paths:
-        return "chore: update project"
+    """Return a concise commit subject inferred from the actual changes.
 
-    # Project docs carry intent; changelog entries and README summaries are stronger
-    # signals than generic filesystem labels. Never invent a feature claim.
-    doc_text = ""
-    for rel in ("docs/CHANGELOG.md", "CHANGELOG.md", "README.md", "docs/README.md"):
-        file = repo.root / rel
-        if file.is_file():
-            try:
-                doc_text += "\n" + file.read_text(encoding="utf-8")[:12000]
-            except (OSError, UnicodeError):
-                pass
-    changelogs = find_changelogs(repo.root)
-    if changelogs:
-        for file in changelogs[:4]:
-            try:
-                content = file.read_text(encoding="utf-8")
-                headings = re.findall(r"(?m)^#{1,3}\s+(.+)$", content)
-                if headings:
-                    doc_text += "\n" + " ".join(headings[:12])
-            except (OSError, UnicodeError):
-                pass
-
-    def is_test_path(path: str) -> bool:
-        parts = Path(path).parts
-        name = Path(path).name.lower()
-        return any(part.lower() in {"tests", "test", "__tests__"} for part in parts[:-1]) or name.startswith("test_") or name.endswith("_test.py") or name.endswith(".test.py") or name.endswith(".spec.py")
-
-    # Determine intent from actual changed files; avoid substring guesses such as
-    # "test" in latest.json or "page" in homepage.html.
-    if paths and all(is_test_path(p) for p in paths):
-        prefix = "test"
-    elif all(p.lower().endswith((".md", ".rst", ".txt", ".adoc", ".asciidoc")) or "docs/" in p.lower() for p in paths):
-        prefix = "docs"
-    else:
-        prefix = "chore"
-
-    # Prefer a useful changelog subsection label when available, but don't copy long prose.
-    candidates = re.findall(r"(?im)^#{2,4}\s+(Added|Changed|Fixed|Removed|Features?|Bug fixes?)\s*$", doc_text)
-    label_map = {"added": "implement project updates", "changed": "update project behavior",
-                 "fixed": "fix project issues", "removed": "remove obsolete project parts",
-                 "feature": "implement project features", "features": "implement project features",
-                 "bug fixes": "fix project issues"}
-    if candidates:
-        detail = label_map.get(candidates[0].lower(), "update project")
-    else:
-        # Summarize changed top-level areas instead of using the old generic default.
-        areas = []
-        for path in paths:
-            parts = Path(path).parts
-            area = parts[0] if len(parts) > 1 else parts[0]
-            if area not in areas and area not in {".gitignore", "README.md", "CHANGELOG.md"}:
-                areas.append(area)
-        detail = ("update " + ", ".join(areas[:2])) if areas else "refresh project documentation"
-    detail = re.sub(r"\s+", " ", detail).strip().lower()
-    return f"{prefix}: {detail}"[:72].rstrip()
+    Thin wrapper kept for backward compatibility; see ``hikari.commit_message``
+    for the rules and ``suggest_commit_message`` for subject + body + reasons.
+    """
+    from .commit_message import suggest_commit_message
+    return suggest_commit_message(repo).subject
